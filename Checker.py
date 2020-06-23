@@ -23,7 +23,7 @@ args = parser.parse_args()
 def check_vt(ip):
     url = 'https://www.virustotal.com/api/v3/ip_addresses/' + ip
     header ={
-        'x-apikey': 'ddf4a72abf1d9be0400af0843350d8a47098462edc2cea77fe77e56073a75e16'
+        'x-apikey': '$API_KEY'
     }
 
     r = requests.get(url, headers=header)
@@ -53,7 +53,7 @@ def check_vt(ip):
 
 def check_otx(ip):
 #Def api + otx
-    API_KEY = "c2a8dbf589101b5d128f426be67d35bd42ed64c4bbea56ee58d3fd2a1328aade"
+    API_KEY = "$API_KEY"
     otx = OTXv2(API_KEY)
 
 #Extraemos los resultados de OTX, y convertimos a string
@@ -97,7 +97,7 @@ def check_abuse(ip):
 #Definimos headers custom
     headers = {
         'Accept': 'application/json',
-        'Key': '7236fb058533f9e416f3529e93f6d29d770edeb5ba4574228cff7bbf0c1dbafd7a0dd1da85a6de5f'
+        'Key': '$API_KEY'
     }
 
 #Extraemos respuesta
@@ -151,7 +151,7 @@ def check_tor(ip):
 
 
 def check_shodan(ip):
-    api_key = 'JfeOaGZRQYXntyd4PXVQjG6pF0CfGuNU'
+    api_key = '$API_KEY'
 
     url = 'https://api.shodan.io/shodan/host/%s?key=%s' % (ip,api_key)
 
