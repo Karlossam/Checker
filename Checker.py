@@ -14,16 +14,20 @@ parser = argparse.ArgumentParser(description='Tool for checking "things" against
 
 parser.add_argument('-r', action='store_true', dest='relations', help='Show the relations in VirusTotal')
 parser.add_argument('-p', action='store_true', dest='pulses', help='Show the pulses in OTX')
-parser.add_argument(dest='thing', help='The "thing" to be scanned. As is recognized by regex there is no need to specify what it actually is. IP follow the format \d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}')
+parser.add_argument(dest='thing', help='The "thing" to be scanned. As is recognized by regex there is no need to specify what it actually is. IP follow the format \d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}. Hash matches against [a-fA-F0-9]{32}')
 
 args = parser.parse_args()
 
-#Define color variables
+#Define API_KEY vars
+vt_api = os.getenv('VT_API')
+abuse_api = os.getenv('ABUSE_API')
+otx_api = os.getenv('OTX_API')
+shodan_api = os.getenv('SHODAN_API')
 
-def check_vt(ip):
+def check_vt_ip(ip):
     url = 'https://www.virustotal.com/api/v3/ip_addresses/' + ip
     header ={
-        'x-apikey': '$API_KEY'
+        'x-apikey': vt_api
     }
 
     r = requests.get(url, headers=header)
@@ -51,10 +55,9 @@ def check_vt(ip):
     print('\n')
 
 
-def check_otx(ip):
+def check_otx_ip(ip):
 #Def api + otx
-    API_KEY = "$API_KEY"
-    otx = OTXv2(API_KEY)
+    otx = OTXv2(otx_api)
 
 #Extraemos los resultados de OTX, y convertimos a string
     alert = str((otx.get_indicator_details_full(IndicatorTypes.IPv4,ip)))
@@ -84,7 +87,7 @@ def check_otx(ip):
     print('\n')
 
 
-def check_abuse(ip):
+def check_abuse_ip(ip):
 #Definimos el api endpoint
     url = "https://api.abuseipdb.com/api/v2/check"
 
@@ -97,7 +100,7 @@ def check_abuse(ip):
 #Definimos headers custom
     headers = {
         'Accept': 'application/json',
-        'Key': '$API_KEY'
+        'Key': abuse_api
     }
 
 #Extraemos respuesta
@@ -128,7 +131,7 @@ def check_abuse(ip):
     print('\n')
 
 
-def check_tor(ip):
+def check_tor_ip(ip):
 #Creamos las variables de tiempo para ver si habria que actualizar el tor_list
     last_mod = int(os.path.getmtime("tor_list"))
     now = int(time.time())
@@ -150,10 +153,8 @@ def check_tor(ip):
         print("\033[;1;31;40m [-] Not TOR\n")
 
 
-def check_shodan(ip):
-    api_key = '$API_KEY'
-
-    url = 'https://api.shodan.io/shodan/host/%s?key=%s' % (ip,api_key)
+def check_shodan_ip(ip):
+    url = 'https://api.shodan.io/shodan/host/%s?key=%s' % (ip,shodan_api)
 
     r = requests.get(url)
 
@@ -172,21 +173,65 @@ def check_shodan(ip):
 
 def check_ip(ip):
     print('[VirusTotal]')
-    check_vt(ip)
+    check_vt_ip(ip)
     print('[OTX]')
-    check_otx(ip)
+    check_otx_ip(ip)
     print('[AbuseIPDB]')
-    check_abuse(ip)
+    check_abuse_ip(ip)
     print('[TOR]')
-    check_tor(ip)
+    check_tor_ip(ip)
     print('[Shodan]')
-    check_shodan(ip)
+    check_shodan_ip(ip)
+
+
+def check_vt_hash(f_hash):
+    url = 'https://www.virustotal.com/api/v3/files/' + f_hash
+
+    header ={
+        'x-apikey': vt_api
+    }
+
+    r = requests.get(url, headers=header)
+
+    vt_res = r.text
+
+    fType_re = re.search(r'"FileType": ".*?"',vt_res)
+    ext_re = re.search(r'"FileTypeExtension": ".*?"',vt_res)
+    mali_re = re.search(r'"malicious": \d{1,2}',vt_res)
+    susp_re = re.search(r'"suspicious": \d{1,2}',vt_res)
+    rep_re = re.search(r'"reputation": .*?,',vt_res)
+
+    mali = mali_re.group(0).split(':')
+    print('[*] Malicious Detections: ' + mali[1])
+    susp = susp_re.group(0).split(':')
+    print('[*] Suspicious Detections: ' + susp[1])
+    fType = fType_re.group(0).split(':')
+    print('[*] File Type: ' + fType[1])
+    ext = ext_re.group(0).split(':')
+    print('[*] Extension: ' + ext[1])
+    rep = rep_re.group(0).split(':')
+    print('[*] Reputation: ' + rep[1])
+
+
+def check_otx_hash(f_hash):
+    print('Check hash')
+
+def check_hash(f_hash):
+    print('[VirusTotal]')
+    check_vt_hash(f_hash)
+    print('[OTX]')
+    check_otx_hash(f_hash)
+
 
 def main():
-    ip_re = re.search(r'\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}',args.thing)
+    ip_re = re.search(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',args.thing)
     hash_re = re.search(r'[a-fA-F0-9]{32}',args.thing)
     dom_re = re.search(r'\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}',args.thing)
     if ip_re:
-        print('Comprobando IP...\n')
+        print(ip_re)
+        print('Checking IP...\n')
         check_ip(args.thing)
+    elif hash_re:
+        print('Checking HASH...\n')
+        check_hash(args.thing)
 main()
