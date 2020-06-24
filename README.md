@@ -4,15 +4,14 @@ Script that checks the given "thing"(let it be IP, Hash, Domain, etc) against th
 At the moment it's a incomplete version of the whole idea. The file tor_list its necesary to check if the IP its present in the list "https://www.dan.me.uk/torlist/", downloaded cuz of restrictions in this web.
 
 <strong> Completed </strong>
-- Checking IP
+- Checking IP, Hash
 - 1 optional argument:
   -p --> Pulses from OTX
-- Colours kinda working
+- Colours kinda working (Must be improved)
 
 <strong> TO DO LIST </strong>
-- Check hash
 - Check domains
 - Check URL
 - More optional arguments:
-  -r --> Relations VirusTotal
-- Error handling
+  -- r --> Relations VirusTotal
+- Error handling ~
