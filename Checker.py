@@ -64,7 +64,7 @@ def check_otx_ip(ip):
 
 #Creamos las expresiones regex para extraer los datos correspondientes
     pulse_re = re.search(r'count\': \d{1,3}',alert)
-    country_re = re.search(r'country_name\': \'\w{1,15}\'',alert)
+    country_re = re.search(r'country_name\': \'.*?\'',alert)
     owner_re = re.search(r'asn\': \'.*?\'',alert)
     pulses_desc_re = re.findall(r'description\': \'.*?\'',alert)
 
@@ -126,8 +126,9 @@ def check_abuse_ip(ip):
     print('[*] Provider: ' + isp[1])
     domain = domain_re.group(0).split(':')
     print('[*] Domain: ' + domain[1])
-    last = last_re.group(0).split(':')
-    print('[*] Last Report: ' + last[1] + ':' + last[2])
+    if last_re:
+        last = last_re.group(0).split(':')
+        print('[*] Last Report: ' + last[1] + ':' + last[2])
     print('\n')
 
 
@@ -148,9 +149,9 @@ def check_tor_ip(ip):
     tor_file = open("tor_list")
     tor_list = tor_file.read()
     if ip in tor_list:
-        print("\033[1;32;40m [*] TOR Node\n")
+        print(colored("[*] TOR Node\n",'green'))
     else:
-        print("\033[;1;31;40m [-] Not TOR\n")
+        print(colored("[-] Not TOR node\n",'red'))
 
 
 def check_shodan_ip(ip):
@@ -158,17 +159,20 @@ def check_shodan_ip(ip):
 
     r = requests.get(url)
 
-    country_re = re.search(r'"country_name": ".*?"', r.text)
-    org_re = re.search(r'"org": ".*?"', r.text)
-    ports_re = re.search(r'ports": \[.*?\]', r.text)
+    if r.text != '{"error": "No information available for that IP."}':
+        country_re = re.search(r'"country_name": ".*?"', r.text)
+        org_re = re.search(r'"org": ".*?"', r.text)
+        ports_re = re.search(r'ports": \[.*?\]', r.text)
 
-    country = country_re.group(0).split(': ')[1]
-    org = org_re.group(0).split(': ')[1]
-    ports = ports_re.group(0).split(': ')[1]
+        country = country_re.group(0).split(': ')[1]
+        org = org_re.group(0).split(': ')[1]
+        ports = ports_re.group(0).split(': ')[1]
 
-    print(country)
-    print(org)
-    print(ports)
+        print("[*] Country: " + country)
+        print("[*] Organization: " + org)
+        print("[*] Ports: " + ports)
+    else:
+        print(colored('[-] No information available for that IP.','red'))
 
 
 def check_ip(ip):
@@ -200,6 +204,9 @@ def check_vt_hash(f_hash):
     mali_re = re.search(r'"malicious": \d{1,2}',vt_res)
     susp_re = re.search(r'"suspicious": \d{1,2}',vt_res)
     rep_re = re.search(r'"reputation": .*?,',vt_res)
+    names_re = re.search(r'"names": .*?\]',vt_res,re.DOTALL)
+    names = str(names_re.group(0))
+    name_re = re.findall(r'".*?\..*?"',names)
 
     mali = mali_re.group(0).split(':')
     print('[*] Malicious Detections: ' + mali[1])
@@ -211,10 +218,34 @@ def check_vt_hash(f_hash):
     print('[*] Extension: ' + ext[1])
     rep = rep_re.group(0).split(':')
     print('[*] Reputation: ' + rep[1])
+    print('[*] Names: ')
+    for x in range(0,min(5,len(name_re))):
+        print(name_re[x])
+    print('\n')
 
 
 def check_otx_hash(f_hash):
-    print('Check hash')
+    otx = OTXv2(otx_api)
+
+#Extraemos los resultados de OTX, y convertimos a string
+    alert = str((otx.get_indicator_details_full(IndicatorTypes.FILE_HASH_MD5,f_hash)))
+
+#Creamos las expresiones regex para extraer los datos correspondientes
+    pulse_re = re.search(r'\{\'count\': \d{1,3}',alert)
+    names_re = re.findall(r'\'name\': \'.*?\'',alert)
+
+#Extraemos los datos y les hacemos el split en el ': '
+    pulses_n = pulse_re.group(0).split(': ')
+
+#Mostramos solo los datos
+    print('[*] Nº Pulses: ' + pulses_n[1])
+    if int(pulses_n[1]) > 0:    
+        print('[*] Examples:')
+        for x in range(0,min(4,int(pulses_n[1]))):
+            name = names_re[x].split(": ")
+            print(name[1])
+    print('\n')
+
 
 def check_hash(f_hash):
     print('[VirusTotal]')
@@ -228,7 +259,6 @@ def main():
     hash_re = re.search(r'[a-fA-F0-9]{32}',args.thing)
     dom_re = re.search(r'\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}',args.thing)
     if ip_re:
-        print(ip_re)
         print('Checking IP...\n')
         check_ip(args.thing)
     elif hash_re:
